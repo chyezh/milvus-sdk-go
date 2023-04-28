@@ -27,6 +27,10 @@ func main() {
 	fmt.Printf(msgFmt, "start connecting to Milvus")
 	c, err := client.NewClient(ctx, client.Config{
 		Address: milvusAddr,
+		Cloud: &client.CloudConfig{
+			APIKey:      "api-key",
+			ClusterName: "cluster-name",
+		},
 	})
 	if err != nil {
 		log.Fatalf("failed to connect to milvus, err: %v", err)
@@ -203,9 +207,9 @@ func main() {
 
 	// drop collection
 	fmt.Printf(msgFmt, "drop collection `hello_milvus`")
-	if err := c.DropCollection(ctx, collectionName); err != nil {
-		log.Fatalf("failed to drop collection, err: %v", err)
-	}
+	// if err := c.DropCollection(ctx, collectionName); err != nil {
+	// 	log.Fatalf("failed to drop collection, err: %v", err)
+	// }
 }
 
 func printResult(sRet *client.SearchResult) {

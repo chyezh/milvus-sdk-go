@@ -51,3 +51,25 @@ func createDatabaseNameStreamInterceptor(dbName string) grpc.StreamClientInterce
 		return streamer(ctx, desc, cc, method, opts...)
 	}
 }
+
+// cloudMetaInterceptor appends the cloud meta into metadata.
+func cloudMetaInterceptor(ctx context.Context, meta *CloudConfig) context.Context {
+	ctx = metadata.AppendToOutgoingContext(ctx, "cloud-meta-api-key", meta.APIKey)
+	return metadata.AppendToOutgoingContext(ctx, "cloud-meta-cluster", meta.ClusterName)
+}
+
+// createCloudMetaInterceptor creates a unary interceptor for db name.
+func createCloudMetaUnaryInterceptor(meta *CloudConfig) grpc.UnaryClientInterceptor {
+	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+		ctx = cloudMetaInterceptor(ctx, meta)
+		return invoker(ctx, method, req, reply, cc, opts...)
+	}
+}
+
+// createCloudMetaStreamInterceptor creates a unary interceptor for db name.
+func createCloudMetaStreamInterceptor(meta *CloudConfig) grpc.StreamClientInterceptor {
+	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+		ctx = cloudMetaInterceptor(ctx, meta)
+		return streamer(ctx, desc, cc, method, opts...)
+	}
+}

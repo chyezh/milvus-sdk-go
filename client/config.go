@@ -1,18 +1,14 @@
 package client
 
 import (
-	"context"
 	"crypto/tls"
 	"errors"
-	"math"
 	"net/url"
 	"strings"
 	"time"
 
-	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
@@ -36,12 +32,19 @@ var DefaultGrpcOpts = []grpc.DialOption{
 	}),
 }
 
+type CloudConfig struct {
+	APIKey      string
+	ClusterName string
+}
+
 type Config struct {
 	Address       string // Remote address, "localhost:19530".
 	Username      string // Username for auth.
 	Password      string // Password for auth.
 	DBName        string // DBName for this client.
 	EnableTLSAuth bool   // Enable TLS Auth for transport security.
+
+	Cloud *CloudConfig // configuration for cloud.
 
 	DialOptions []grpc.DialOption // Dial options for GRPC.
 }
@@ -65,17 +68,17 @@ func (c *Config) getDialOption() ([]grpc.DialOption, error) {
 		options = append(options, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
-	options = append(options,
-		grpc.WithChainUnaryInterceptor(grpc_retry.UnaryClientInterceptor(
-			grpc_retry.WithMax(6),
-			grpc_retry.WithBackoff(func(attempt uint) time.Duration {
-				return 60 * time.Millisecond * time.Duration(math.Pow(3, float64(attempt)))
-			}),
-			grpc_retry.WithCodes(codes.Unavailable, codes.ResourceExhausted)),
-			RetryOnRateLimitInterceptor(10, func(ctx context.Context, attempt uint) time.Duration {
-				return 10 * time.Millisecond * time.Duration(math.Pow(3, float64(attempt)))
-			}),
-		))
+	// options = append(options,
+	// 	grpc.WithChainUnaryInterceptor(grpc_retry.UnaryClientInterceptor(
+	// 		grpc_retry.WithMax(6),
+	// 		grpc_retry.WithBackoff(func(attempt uint) time.Duration {
+	// 			return 60 * time.Millisecond * time.Duration(math.Pow(3, float64(attempt)))
+	// 		}),
+	// 		grpc_retry.WithCodes(codes.Unavailable, codes.ResourceExhausted)),
+	// 		RetryOnRateLimitInterceptor(10, func(ctx context.Context, attempt uint) time.Duration {
+	// 			return 10 * time.Millisecond * time.Duration(math.Pow(3, float64(attempt)))
+	// 		}),
+	// 	))
 
 	// Construct username:password field
 	if c.Username != "" && c.Password != "" {
@@ -84,6 +87,13 @@ func (c *Config) getDialOption() ([]grpc.DialOption, error) {
 				createAuthenticationUnaryInterceptor(c.Username, c.Password),
 			),
 			grpc.WithStreamInterceptor(createAuthenticationStreamInterceptor(c.Username, c.Password)),
+		)
+	} else if c.Cloud != nil {
+		options = append(options,
+			grpc.WithChainUnaryInterceptor(
+				createCloudMetaUnaryInterceptor(c.Cloud),
+			),
+			grpc.WithStreamInterceptor(createCloudMetaStreamInterceptor(c.Cloud)),
 		)
 	}
 
