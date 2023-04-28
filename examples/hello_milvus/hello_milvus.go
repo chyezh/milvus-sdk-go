@@ -14,7 +14,7 @@ import (
 const (
 	milvusAddr     = `localhost:19530`
 	nEntities, dim = 3000, 8
-	collectionName = "hello_milvus"
+	collectionName = "hello_milvus3"
 
 	msgFmt                         = "\n==== %s ====\n"
 	idCol, randomCol, embeddingCol = "ID", "random", "embeddings"
@@ -114,7 +114,7 @@ func main() {
 
 	// build index
 	fmt.Printf(msgFmt, "start creating index IVF_FLAT")
-	idx, err := entity.NewIndexIvfFlat(entity.L2, 128)
+	idx, err := entity.NewIndexAUTOINDEX(entity.IP)
 	if err != nil {
 		log.Fatalf("failed to create ivf flat index, err: %v", err)
 	}
@@ -134,9 +134,10 @@ func main() {
 		entity.FloatVector(embeddingList[len(embeddingList)-1]),
 	}
 	begin := time.Now()
-	sp, _ := entity.NewIndexIvfFlatSearchParam(16)
+
+	sp, _ := entity.NewIndexAUTOINDEXSearchParam(2)
 	sRet, err := c.Search(ctx, collectionName, nil, "", []string{randomCol}, vec2search,
-		embeddingCol, entity.L2, topK, sp)
+		embeddingCol, entity.IP, topK, sp)
 	end := time.Now()
 	if err != nil {
 		log.Fatalf("failed to search collection, err: %v", err)
@@ -152,7 +153,7 @@ func main() {
 	fmt.Printf(msgFmt, "start hybrid searching with `random > 0.5`")
 	begin = time.Now()
 	sRet2, err := c.Search(ctx, collectionName, nil, "random > 0.5",
-		[]string{randomCol}, vec2search, embeddingCol, entity.L2, topK, sp)
+		[]string{randomCol}, vec2search, embeddingCol, entity.IP, topK, sp)
 	end = time.Now()
 	if err != nil {
 		log.Fatalf("failed to search collection, err: %v", err)
