@@ -9,24 +9,45 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-// AuthenticationInterceptor appends credential into context metadata
-func AuthenticationInterceptor(ctx context.Context, username, password string) context.Context {
+// authenticationInterceptor appends credential into context metadata
+func authenticationInterceptor(ctx context.Context, username, password string) context.Context {
 	value := crypto.Base64Encode(fmt.Sprintf("%s:%s", username, password))
 	return metadata.AppendToOutgoingContext(ctx, "authorization", value)
 }
 
 // CreateAuthenticationUnaryInterceptor creates a unary interceptor for authentication
-func CreateAuthenticationUnaryInterceptor(username, password string) grpc.UnaryClientInterceptor {
+func createAuthenticationUnaryInterceptor(username, password string) grpc.UnaryClientInterceptor {
 	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-		ctx = AuthenticationInterceptor(ctx, username, password)
+		ctx = authenticationInterceptor(ctx, username, password)
 		return invoker(ctx, method, req, reply, cc, opts...)
 	}
 }
 
-// CreateAuthenticationStreamInterceptor creates a stream interceptor for authentication
-func CreateAuthenticationStreamInterceptor(username, password string) grpc.StreamClientInterceptor {
+// createAuthenticationStreamInterceptor creates a stream interceptor for authentication
+func createAuthenticationStreamInterceptor(username, password string) grpc.StreamClientInterceptor {
 	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
-		ctx = AuthenticationInterceptor(ctx, username, password)
+		ctx = authenticationInterceptor(ctx, username, password)
+		return streamer(ctx, desc, cc, method, opts...)
+	}
+}
+
+// databaseNameInterceptor appends the dbName into metadata.
+func databaseNameInterceptor(ctx context.Context, dbName string) context.Context {
+	return metadata.AppendToOutgoingContext(ctx, "dbname", dbName)
+}
+
+// createDatabaseNameInterceptor creates a unary interceptor for db name.
+func createDatabaseNameUnaryInterceptor(dbName string) grpc.UnaryClientInterceptor {
+	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+		ctx = databaseNameInterceptor(ctx, dbName)
+		return invoker(ctx, method, req, reply, cc, opts...)
+	}
+}
+
+// createDatabaseNameStreamInterceptor creates a unary interceptor for db name.
+func createDatabaseNameStreamInterceptor(dbName string) grpc.StreamClientInterceptor {
+	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+		ctx = databaseNameInterceptor(ctx, dbName)
 		return streamer(ctx, desc, cc, method, opts...)
 	}
 }

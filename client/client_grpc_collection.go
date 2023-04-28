@@ -29,6 +29,8 @@ import (
 type GrpcClient struct {
 	Conn    *grpc.ClientConn           // grpc connection instance
 	Service server.MilvusServiceClient // Service client stub
+
+	config *Config
 }
 
 // connect connect to Service

@@ -21,7 +21,6 @@ func postResponse(funcName string, err error, res ...interface{}) {
 	} else {
 		log.Printf("(ApiResponse): func [%s], results: %v\n", funcName, res)
 	}
-
 }
 
 type MilvusClient struct {
@@ -29,9 +28,12 @@ type MilvusClient struct {
 }
 
 func NewMilvusClient(ctx context.Context, addr string, dialOptions ...grpc.DialOption) (*MilvusClient, error) {
-	preRequest("NewGrpcClient", ctx, addr, dialOptions)
-	mClient, err := client.NewGrpcClient(ctx, addr, dialOptions...)
-	postResponse("NewGrpcClient", err, mClient)
+	preRequest("NewClient", ctx, addr, dialOptions)
+	mClient, err := client.NewClient(ctx, client.Config{
+		Address:     addr,
+		DialOptions: dialOptions,
+	})
+	postResponse("NewClient", err, mClient)
 	return &MilvusClient{
 		mClient,
 	}, err
@@ -128,7 +130,7 @@ func (mc *MilvusClient) GetCollectionStatistics(ctx context.Context, collName st
 
 // Load Collection
 func (mc *MilvusClient) LoadCollection(ctx context.Context, collName string, async bool, opts ...client.LoadCollectionOption) error {
-	var funcName = "LoadCollection"
+	funcName := "LoadCollection"
 	preRequest(funcName, ctx, collName, opts)
 	err := mc.mClient.LoadCollection(ctx, collName, async, opts...)
 	postResponse(funcName, err)
@@ -337,8 +339,9 @@ func (mc *MilvusClient) DeleteByPks(ctx context.Context, collName string, partit
 
 // Search
 func (mc *MilvusClient) Search(ctx context.Context, collName string, partitions []string, expr string,
-	outputFields []string, vectors []entity.Vector, vectorField string, metricType entity.MetricType, topK int, sp entity.SearchParam, opts ...client.SearchQueryOptionFunc) ([]client.SearchResult, error) {
-	var funcName = "Search"
+	outputFields []string, vectors []entity.Vector, vectorField string, metricType entity.MetricType, topK int, sp entity.SearchParam, opts ...client.SearchQueryOptionFunc,
+) ([]client.SearchResult, error) {
+	funcName := "Search"
 	preRequest(funcName, ctx, collName, partitions, expr, outputFields, vectors, vectorField, metricType, topK, sp, opts)
 
 	searchResult, err := mc.mClient.Search(ctx, collName, partitions, expr, outputFields, vectors, vectorField, metricType, topK, sp, opts...)
@@ -349,8 +352,9 @@ func (mc *MilvusClient) Search(ctx context.Context, collName string, partitions 
 
 // Query
 func (mc *MilvusClient) Query(ctx context.Context, collName string, partitions []string, ids entity.Column,
-	outputFields []string, opts ...client.SearchQueryOptionFunc) ([]entity.Column, error) {
-	var funcName = "QueryByPks"
+	outputFields []string, opts ...client.SearchQueryOptionFunc,
+) ([]entity.Column, error) {
+	funcName := "QueryByPks"
 	preRequest(funcName, ctx, collName, partitions, ids, outputFields, opts)
 
 	queryResults, err := mc.mClient.QueryByPks(ctx, collName, partitions, ids, outputFields, opts...)
